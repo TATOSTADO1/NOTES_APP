@@ -1,0 +1,18 @@
+from fastapi import APIRouter
+
+from API.dependencies import CurrentUser, DbSession
+from SCHEMAS.users import UserResponse, UserUpdate
+from SERVICES import users
+
+
+router = APIRouter(prefix="/users", tags=["Users"])
+
+
+@router.get("/me", response_model=UserResponse)
+def get_me(current_user: CurrentUser):
+    return current_user
+
+
+@router.patch("/me", response_model=UserResponse)
+def update_me(data: UserUpdate, db: DbSession, current_user: CurrentUser):
+    return users.update_profile(db, current_user.id_user, data)

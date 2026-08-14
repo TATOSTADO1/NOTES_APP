@@ -1,0 +1,1 @@
+aqui ira lo equivalente a la logica del back, referido a validaciones y verificaciones u operaciones, mientras que en repo ira lo equivalente a las querys pero en orm
