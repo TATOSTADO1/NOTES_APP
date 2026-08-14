@@ -1,0 +1,70 @@
+/*CREATE TABLE users (
+    id_user UUID PRIMARY KEY,
+
+    username VARCHAR(50) NOT NULL UNIQUE,
+
+    email VARCHAR(255) NOT NULL UNIQUE,
+
+    password_hash TEXT NOT NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+	);
+
+	CREATE TABLE folders (
+    id_folder UUID PRIMARY KEY,
+
+    id_user UUID NOT NULL,
+
+    parent_folder_id UUID NULL,
+
+    name VARCHAR(255) NOT NULL,
+
+    color VARCHAR(50) NULL,
+
+    icon VARCHAR(100) NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_folder_user
+        FOREIGN KEY (id_user)
+        REFERENCES users(id_user),
+
+    CONSTRAINT uq_folder_user
+        UNIQUE (id_folder, id_user),
+
+    CONSTRAINT fk_parent_folder_same_user
+        FOREIGN KEY (parent_folder_id, id_user)
+        REFERENCES folders(id_folder, id_user)
+);
+
+CREATE TABLE notes (
+    id_note UUID PRIMARY KEY,
+
+    id_user UUID NOT NULL,
+
+    id_folder UUID NULL,
+
+    title VARCHAR(255) NOT NULL,
+
+    content TEXT NULL,
+
+    favorite BOOLEAN NOT NULL DEFAULT FALSE,
+
+    deleted BOOLEAN NOT NULL DEFAULT FALSE,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_note_user
+        FOREIGN KEY (id_user)
+        REFERENCES users(id_user),
+
+    CONSTRAINT fk_note_folder_same_user
+        FOREIGN KEY (id_folder, id_user)
+        REFERENCES folders(id_folder, id_user)
+);
