@@ -1,0 +1,11 @@
+# Variables privadas
+.env
+.env.*
+!.env.example
+
+# Entorno virtual
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]

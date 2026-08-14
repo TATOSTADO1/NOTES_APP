@@ -17,8 +17,7 @@ from SERVICES.errors import ServiceError
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    # Adecuado durante desarrollo. Cuando se agregue Alembic, las migraciones
-    # deben sustituir create_all como mecanismo de evolución del esquema.
+
     Base.metadata.create_all(bind=engine)
     yield
 
