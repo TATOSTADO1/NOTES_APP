@@ -3,7 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Query, Response, status
 
 from API.dependencies import CurrentUser, DbSession
-from SCHEMAS.notes import NotesCreate, NotesResponse, NotesUpdate
+from SCHEMAS.notes import NotesCreate, NotesPage, NotesResponse, NotesUpdate
 from SERVICES import notes
 
 
@@ -15,21 +15,40 @@ def create_note(data: NotesCreate, db: DbSession, current_user: CurrentUser):
     return notes.create_note(db, current_user.id_user, data)
 
 
-@router.get("", response_model=list[NotesResponse])
+@router.get("", response_model=NotesPage)
 def list_notes(
     db: DbSession,
     current_user: CurrentUser,
     deleted: bool = False,
     favorite: bool | None = None,
+    folder_id: UUID | None = None,
+    unfiled: bool = False,
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
 ):
-    return notes.list_notes(db, current_user.id_user, deleted=deleted, favorite=favorite)
+    return notes.list_notes(
+        db,
+        current_user.id_user,
+        deleted=deleted,
+        favorite=favorite,
+        folder_id=folder_id,
+        unfiled=unfiled,
+        limit=limit,
+        offset=offset,
+    )
 
 
-@router.get("/search", response_model=list[NotesResponse])
+@router.get("/search", response_model=NotesPage)
 def search_notes(
-    db: DbSession, current_user: CurrentUser, q: str = Query(min_length=1, max_length=255)
+    db: DbSession,
+    current_user: CurrentUser,
+    q: str = Query(min_length=1, max_length=255),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
 ):
-    return notes.search_notes(db, current_user.id_user, q)
+    return notes.search_notes(
+        db, current_user.id_user, q, limit=limit, offset=offset
+    )
 
 
 @router.get("/{note_id}", response_model=NotesResponse)

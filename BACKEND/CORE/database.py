@@ -4,7 +4,8 @@ from CORE.config import settings
 
 '''crea una conexion a la base de datos utilizando la URL de la base de datos especificada en el archivo .env'''
 engine = create_engine(
-    settings.DATABASE_URL
+    settings.DATABASE_URL,
+    pool_pre_ping=True,
 )
 
 '''session maker es una clase que crea una nueva sesión de base de datos cada vez que se llama. Se utiliza para interactuar con la base de datos, por lo que se necesita una sesión para realizar cualquier operación en la base de datos.'''

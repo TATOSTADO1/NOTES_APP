@@ -1,11 +1,14 @@
+from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from MODELS.user import User
+from CORE.encryption import hash_password, verify_password
+from QUERYS import sessions as session_queries
 from QUERYS import users as user_queries
-from SCHEMAS.users import UserUpdate
+from SCHEMAS.users import PasswordChange, UserUpdate
 from SERVICES.errors import ServiceError
 
 
@@ -37,3 +40,21 @@ def update_profile(db: Session, user_id: UUID, data: UserUpdate) -> User:
     except IntegrityError as error:
         db.rollback()
         raise ServiceError(409, "El correo o usuario ya está registrado") from error
+
+
+def change_password(
+    db: Session, user_id: UUID, data: PasswordChange
+) -> None:
+    user = get_profile(db, user_id)
+    if not verify_password(data.current_password, user.password_hash):
+        raise ServiceError(401, "La contraseña actual es incorrecta")
+    if verify_password(data.new_password, user.password_hash):
+        raise ServiceError(400, "La contraseña nueva debe ser diferente")
+
+    user.password_hash = hash_password(data.new_password)
+    session_queries.revoke_all_by_user(db, user_id, datetime.now(timezone.utc))
+    try:
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise

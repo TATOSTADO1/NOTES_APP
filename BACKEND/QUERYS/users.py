@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from MODELS.user import User
@@ -15,7 +15,9 @@ def get_by_email(db: Session, email: str) -> User | None:
 
 
 def get_by_username(db: Session, username: str) -> User | None:
-    return db.scalar(select(User).where(User.username == username))
+    return db.scalar(
+        select(User).where(func.lower(User.username) == username.strip().lower())
+    )
 
 
 def add(db: Session, user: User) -> User:

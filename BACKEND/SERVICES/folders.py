@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from MODELS.folder import Folder
@@ -29,15 +30,24 @@ def _validate_parent(
         current_id = current.parent_folder_id
 
 
+def _commit(db: Session, folder: Folder | None = None) -> None:
+    try:
+        db.commit()
+        if folder is not None:
+            db.refresh(folder)
+    except IntegrityError as error:
+        db.rollback()
+        raise ServiceError(409, "La operación sobre la carpeta no es válida") from error
+
+
 def create_folder(db: Session, user_id: UUID, data: FolderCreate) -> Folder:
-    name = data.name.strip()
+    name = data.name
     _validate_parent(db, user_id, data.parent_folder_id)
     if folder_queries.get_by_name(db, user_id, name, data.parent_folder_id):
         raise ServiceError(409, "Ya existe una carpeta con ese nombre en esta ubicación")
     folder = Folder(id_user=user_id, name=name, **data.model_dump(exclude={"name"}))
     folder_queries.add(db, folder)
-    db.commit()
-    db.refresh(folder)
+    _commit(db, folder)
     return folder
 
 
@@ -54,8 +64,6 @@ def update_folder(
 ) -> Folder:
     folder = _get_owned(db, user_id, folder_id)
     changes = data.model_dump(exclude_unset=True)
-    if "name" in changes:
-        changes["name"] = changes["name"].strip()
     parent_id = changes.get("parent_folder_id", folder.parent_folder_id)
     _validate_parent(db, user_id, parent_id, folder_id)
     name = changes.get("name", folder.name)
@@ -64,8 +72,7 @@ def update_folder(
         raise ServiceError(409, "Ya existe una carpeta con ese nombre en esta ubicación")
     for field, value in changes.items():
         setattr(folder, field, value)
-    db.commit()
-    db.refresh(folder)
+    _commit(db, folder)
     return folder
 
 
@@ -73,7 +80,7 @@ def delete_folder(db: Session, user_id: UUID, folder_id: UUID) -> None:
     folder = _get_owned(db, user_id, folder_id)
     if folder_queries.get_children(db, folder_id, user_id):
         raise ServiceError(409, "La carpeta contiene subcarpetas")
-    if note_queries.get_by_folder(db, folder_id, user_id):
+    if note_queries.has_any_in_folder(db, folder_id, user_id):
         raise ServiceError(409, "La carpeta contiene notas")
     folder_queries.delete(db, folder)
-    db.commit()
+    _commit(db)

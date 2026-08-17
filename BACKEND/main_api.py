@@ -1,16 +1,15 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Response, status
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy import text
-from sqlalchemy.exc import SQLAlchemyError
 
 from API.ROUTES import auth_api, folders_api, notes_api, users_api
 from CORE.database import Base, engine
 # Estos imports registran todas las tablas en Base.metadata antes del arranque.
 from MODELS.folder import Folder  # noqa: F401
 from MODELS.note import Note  # noqa: F401
+from MODELS.session import AuthSession, RefreshToken  # noqa: F401
 from MODELS.user import User  # noqa: F401
 from SERVICES.errors import ServiceError
 
@@ -59,17 +58,3 @@ def root():
         "version": app.version,
         "documentation": "/docs",
     }
-
-
-@app.get(
-    "/health/database",
-    responses={status.HTTP_503_SERVICE_UNAVAILABLE: {"description": "Database unavailable"}},
-)
-def database_health(response: Response):
-    try:
-        with engine.connect() as connection:
-            connection.execute(text("SELECT 1"))
-        return {"database": "connected"}
-    except SQLAlchemyError:
-        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-        return {"database": "disconnected"}

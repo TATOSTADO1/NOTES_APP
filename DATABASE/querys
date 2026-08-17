@@ -1,3 +1,4 @@
+
 /*CREATE TABLE users (
     id_user UUID PRIMARY KEY,
 
@@ -67,4 +68,205 @@ CREATE TABLE notes (
     CONSTRAINT fk_note_folder_same_user
         FOREIGN KEY (id_folder, id_user)
         REFERENCES folders(id_folder, id_user)
+);*/
+
+/*
+BEGIN;
+
+-- =========================================================
+-- USERS
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS users (
+    id_user UUID PRIMARY KEY,
+
+    username VARCHAR(50) NOT NULL,
+
+    email VARCHAR(255) NOT NULL,
+
+    password_hash TEXT NOT NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT uq_users_username
+        UNIQUE (username),
+
+    CONSTRAINT uq_users_email
+        UNIQUE (email)
 );
+
+
+-- =========================================================
+-- FOLDERS
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS folders (
+    id_folder UUID PRIMARY KEY,
+
+    id_user UUID NOT NULL,
+
+    parent_folder_id UUID NULL,
+
+    name VARCHAR(255) NOT NULL,
+
+    color VARCHAR(50) NULL,
+
+    icon VARCHAR(100) NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_folder_user
+        FOREIGN KEY (id_user)
+        REFERENCES users(id_user),
+
+    CONSTRAINT uq_folder_user
+        UNIQUE (id_folder, id_user),
+
+    CONSTRAINT fk_parent_folder_same_user
+        FOREIGN KEY (parent_folder_id, id_user)
+        REFERENCES folders(id_folder, id_user)
+);
+
+
+-- =========================================================
+-- NOTES
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS notes (
+    id_note UUID PRIMARY KEY,
+
+    id_user UUID NOT NULL,
+
+    id_folder UUID NULL,
+
+    title VARCHAR(255) NOT NULL,
+
+    content TEXT NULL,
+
+    favorite BOOLEAN NOT NULL DEFAULT FALSE,
+
+    deleted BOOLEAN NOT NULL DEFAULT FALSE,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_note_user
+        FOREIGN KEY (id_user)
+        REFERENCES users(id_user),
+
+    CONSTRAINT fk_note_folder_same_user
+        FOREIGN KEY (id_folder, id_user)
+        REFERENCES folders(id_folder, id_user)
+);
+
+
+-- =========================================================
+-- AUTH SESSIONS
+-- Cada fila representa una sesión o dispositivo.
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS auth_sessions (
+    id_session UUID PRIMARY KEY,
+
+    id_user UUID NOT NULL,
+
+    device_name VARCHAR(100) NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    last_used_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    expires_at TIMESTAMPTZ NOT NULL,
+
+    revoked_at TIMESTAMPTZ NULL,
+
+    CONSTRAINT fk_auth_session_user
+        FOREIGN KEY (id_user)
+        REFERENCES users(id_user)
+);
+
+
+-- =========================================================
+-- REFRESH TOKENS
+-- Sólo se almacena el hash del refresh token.
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+    id_refresh_token UUID PRIMARY KEY,
+
+    id_session UUID NOT NULL,
+
+    token_hash VARCHAR(64) NOT NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    used_at TIMESTAMPTZ NULL,
+
+    revoked_at TIMESTAMPTZ NULL,
+
+    replaced_by_id UUID NULL,
+
+    CONSTRAINT fk_refresh_token_session
+        FOREIGN KEY (id_session)
+        REFERENCES auth_sessions(id_session),
+
+    CONSTRAINT fk_refresh_token_replacement
+        FOREIGN KEY (replaced_by_id)
+        REFERENCES refresh_tokens(id_refresh_token)
+);
+
+
+-- =========================================================
+-- ÍNDICES DE USERS
+-- username y email ya reciben índices por sus restricciones
+-- UNIQUE, por lo que no se crean índices adicionales.
+-- =========================================================
+
+
+-- =========================================================
+-- ÍNDICES DE FOLDERS
+-- =========================================================
+
+CREATE INDEX IF NOT EXISTS ix_folders_id_user
+    ON folders(id_user);
+
+CREATE INDEX IF NOT EXISTS ix_folders_parent_user
+    ON folders(parent_folder_id, id_user);
+
+
+-- =========================================================
+-- ÍNDICES DE NOTES
+-- =========================================================
+
+CREATE INDEX IF NOT EXISTS ix_notes_user_deleted_updated
+    ON notes(id_user, deleted, updated_at DESC);
+
+CREATE INDEX IF NOT EXISTS ix_notes_folder_user
+    ON notes(id_folder, id_user);
+
+
+-- =========================================================
+-- ÍNDICES DE AUTH SESSIONS
+-- =========================================================
+
+CREATE INDEX IF NOT EXISTS ix_auth_sessions_id_user
+    ON auth_sessions(id_user);
+
+
+-- =========================================================
+-- ÍNDICES DE REFRESH TOKENS
+-- =========================================================
+
+CREATE INDEX IF NOT EXISTS ix_refresh_tokens_id_session
+    ON refresh_tokens(id_session);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ix_refresh_tokens_token_hash
+    ON refresh_tokens(token_hash);
+
+
+COMMIT;
